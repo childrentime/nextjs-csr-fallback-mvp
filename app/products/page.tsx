@@ -5,7 +5,7 @@ import { useStore } from './store';
 import { list, row, meta } from '../_components/styles';
 
 export default function Page() {
-  const { products, categories, selectedCategoryId, selectCategory } = useStore();
+  const { products, categories, selectedCategoryId, selectCategory, buyOne } = useStore();
 
   const filtered = useMemo(
     () => (selectedCategoryId ? products.filter((p) => p.categoryId === selectedCategoryId) : products),
@@ -27,10 +27,13 @@ export default function Page() {
       </div>
       <ul style={list}>
         {filtered.map((p) => (
-          <li key={p.id} style={row}>
+          <li key={p.id} style={{ ...row, gridTemplateColumns: '1fr auto auto auto' }}>
             <span>{p.name}</span>
             <span style={{ color: '#fbbf24' }}>¥{p.price}</span>
             <span style={{ color: '#9ca3af', fontSize: 12 }}>剩 {p.stock}</span>
+            <button onClick={() => buyOne(p.id)} disabled={p.stock === 0} style={buyBtn(p.stock === 0)}>
+              买一个
+            </button>
           </li>
         ))}
       </ul>
@@ -57,4 +60,15 @@ const tag = (active: boolean): React.CSSProperties => ({
   fontSize: 12,
   border: 'none',
   cursor: 'pointer',
+});
+
+const buyBtn = (disabled: boolean): React.CSSProperties => ({
+  padding: '4px 10px',
+  borderRadius: 6,
+  background: disabled ? '#374151' : '#16a34a',
+  color: '#fff',
+  fontSize: 12,
+  border: 'none',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.5 : 1,
 });

@@ -10,19 +10,28 @@ import {
 } from 'react';
 import { createStore, type StateCreator, type StoreApi } from 'zustand/vanilla';
 
+// stateCreator returns only the client-only initial state, but its set/get
+// see the FULL state (server fields included) so actions can refresh /
+// patch / optimistically update server data too.
+type StateInit<TServer extends object, TClient extends object> = (
+  set: StoreApi<TServer & TClient>['setState'],
+  get: StoreApi<TServer & TClient>['getState'],
+  store: StoreApi<TServer & TClient>,
+) => TClient;
+
 // Per-page store factory. The loader fetches all server data; stateCreator
 // declares client-only state + actions. Provider seeds via initialData
 // (SSR) or invokes the loader itself (CSR fallback).
 export function defineContextStore<TServer extends object, TClient extends object>(
   loader: () => Promise<TServer | null>,
-  stateCreator: StateCreator<TClient>,
+  stateCreator: StateInit<TServer, TClient>,
 ) {
   type State = TServer & TClient;
   type Store = StoreApi<State>;
   const Ctx = createContext<Store | null>(null);
 
   function makeStore(seed: TServer | null): Store {
-    const store = createStore<State>(stateCreator as unknown as StateCreator<State>);
+    const store = createStore<State>(((set, get, api) => stateCreator(set, get, api) as State) satisfies StateCreator<State>);
     if (seed) store.setState(seed as Partial<State>);
     return store;
   }
