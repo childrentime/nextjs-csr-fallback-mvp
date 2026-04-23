@@ -1,15 +1,13 @@
 import { CSR_HEADER, CSR_ON } from './csr-constants';
 
-// Same-origin /api routes co-deployed with the Next.js app. Server-side
-// fetch needs an absolute URL; client-side uses relative paths.
-function baseUrl(): string {
-  if (typeof window !== 'undefined') return '';
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return `http://localhost:${process.env.PORT ?? 3030}`;
-}
+// Server uses internal DNS (k8s service / sidecar / loopback); browser uses
+// public domain. Set INTERNAL_API_URL + NEXT_PUBLIC_API_URL in production.
+const INTERNAL_API_URL = process.env.INTERNAL_API_URL ?? 'http://localhost:4000';
+const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 async function call<T>(path: string): Promise<T> {
-  const res = await fetch(`${baseUrl()}/api${path}`, { cache: 'no-store' });
+  const baseUrl = typeof window === 'undefined' ? INTERNAL_API_URL : PUBLIC_API_URL;
+  const res = await fetch(`${baseUrl}${path}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`API ${res.status} ${path}`);
   return res.json();
 }
@@ -26,7 +24,7 @@ export const fetchArticles = (): Promise<{ articles: Article[] }> => call('/arti
 export const fetchFeatured = (): Promise<{ ids: number[] }> => call('/featured');
 
 // Page loaders. Server-side with `?__csr` returns null (layout sends null
-// to <Provider>, which mounts the placeholder, then store refetches client-side).
+// to <Provider>, which mounts blank, then store refetches client-side).
 function createLoader<T>(fetcher: () => Promise<T>): () => Promise<T | null> {
   return async () => {
     if (typeof window === 'undefined') {
